@@ -1,8 +1,8 @@
 [package]
 name = "ov-config"
 version = "0.1.0"
-authors = ["Boyu Ni <bni@symbolicio.com>"]
-edition = "2018"
+authors = ["Boyu Ni <niboyu@live.com>"]
+edition = "2019"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
