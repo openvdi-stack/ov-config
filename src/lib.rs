@@ -34,8 +34,8 @@ mod tests {
         );
         assert_eq!(
             format!(
-				"OVConfigError: Bad [{}]::{}. Found: {} -- Reason: {}.",
-        		section, key, value, reason
+                "OVConfigError: Bad [{}]::{}. Found: {} -- Reason: {}.",
+                section, key, value, reason
             ),
             OVConfigError::BadValueReason {
                 section: section.to_string(),
@@ -48,7 +48,7 @@ mod tests {
         assert_eq!(
             format!(
                 "OVConfigError: Bad [{}]::{}. Found: {}",
-        section, key, value
+                section, key, value
             ),
             OVConfigError::BadValue {
                 section: section.to_string(),
