@@ -38,7 +38,7 @@ macro_rules! make_config {
                         Ok(())
                     }
 
-                    pub fn get_config<T: Into<String>>(_path: T) -> OVCResult<Self> {
+                    pub fn get_config<T: AsRef<str> + ?Sized>(_path: &T) -> OVCResult<Self> {
                         Ok(Self{..Default::default()})
                     }
                 }
@@ -63,6 +63,12 @@ macro_rules! make_config {
             pub fn verify(&self) -> OVCResult<()> {
                 $(self.$section.verify()?;)*
                 Ok(())
+            }
+
+            pub fn get_config<T:AsRef<str> + ?Sized>(path: &T) -> OVCResult<Self> {
+                Ok(Self {
+                    $($section: ovconfig::$section::get_config(&path)?,)*
+                })
             }
         }
     }
