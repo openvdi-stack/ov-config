@@ -4,6 +4,80 @@ mod error;
 
 pub use error::OVConfigError;
 
+type OVCResult<T> = Result<T, OVConfigError>;
+
+#[macro_export]
+macro_rules! make_config {
+    (
+        $name:ident,
+        $(
+            $section:ident {
+                $($key:ident:$type:ty:$default_value:expr=>$closure:expr),*
+            }
+        );*
+    ) => {
+        mod ovconfig {
+            use super::*;
+            $(
+                #[allow(non_camel_case_types)]
+                pub struct $section{
+                    $(pub $key: $type),*
+                }
+
+                impl $section {
+                    pub fn verify(&self) -> OVCResult<()> {
+                        $(
+                            if !$closure(&self.$key) {
+                                return Err(OVConfigError::BadValue{
+                                    section:stringify!($section).into(),
+                                    key:stringify!($key).into(),
+                                    value: self.$key.to_string()
+                                });
+                            }
+                        )*
+                        Ok(())
+                    }
+
+                    pub fn get_config<T: Into<String>>(_path: T) -> OVCResult<Self> {
+                        Ok(Self{..Default::default()})
+                    }
+                }
+
+                impl Default for $section {
+                    fn default() -> Self {
+                        Self {
+                            $($key: $default_value),*
+                        }
+                    }
+                }
+            )*
+        }
+
+        #[allow(non_camel_case_types)]
+        #[allow(non_snake_case)]
+        pub struct $name {
+            $(pub $section: ovconfig::$section,)*
+        }
+
+        impl $name {
+            pub fn verify(&self) -> OVCResult<()> {
+                $(self.$section.verify()?;)*
+                Ok(())
+            }
+        }
+    }
+}
+
+make_config!(test_config, test_section1 {
+    key1:String:"key1".into()=>|_x| true,
+    key2:String:"key2".into()=>|_x| true,
+    key3:String:"key3".into()=>|_x| true
+}; TestSection2 {
+    key4:String:"key1".into()=>|_x| true,
+    key2:String:"key2".into()=>|_x| true,
+    key3:String:"key3".into()=>|_x| true
+});
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -17,34 +91,7 @@ mod tests {
         let section = "section";
         let key = "key";
         let value = "bad_value";
-        let suggest = vec!["correct1".to_string(), "correct2".to_string()];
-        let reason = "some_reason";
-        assert_eq!(
-            format!(
-                "OVConfigError: Bad [{}]::{}. Found: {} -- Expected: {:?}.",
-                section, key, value, suggest
-            ),
-            OVConfigError::BadValueSuggest {
-                section: section.to_string(),
-                key: key.to_string(),
-                value: value.to_string(),
-                suggest
-            }
-            .to_string()
-        );
-        assert_eq!(
-            format!(
-                "OVConfigError: Bad [{}]::{}. Found: {} -- Reason: {}.",
-                section, key, value, reason
-            ),
-            OVConfigError::BadValueReason {
-                section: section.to_string(),
-                key: key.to_string(),
-                value: value.to_string(),
-                reason: reason.to_string()
-            }
-            .to_string()
-        );
+
         assert_eq!(
             format!(
                 "OVConfigError: Bad [{}]::{}. Found: {}",
