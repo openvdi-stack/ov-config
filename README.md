@@ -1,5 +1,7 @@
 # ov-config
 [![Build Status](https://travis-ci.com/openvdi-stack/ov-config.svg?branch=master)](https://travis-ci.com/openvdi-stack/ov-config)
+[![Crates.io](https://img.shields.io/crates/v/config_struct.svg)](https://crates.io/crates/ov-config)
+[![Docs.rs](https://docs.rs/config_struct/badge.svg)](https://docs.rs/ov-config/0.1.1/ov_config/)
 
 A configuration parsing library that provide macros and convenience functions for generating configuration schema, sanity check, flush, refresh, etc. Design for `.toml` and `.ini`.
 
