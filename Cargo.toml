@@ -1,14 +1,14 @@
 [package]
 name = "ov-config"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Boyu Ni <niboyu@live.com>"]
 edition = "2018"
 description = "An ini/toml configuration parsing library that provide macros and convenience functions for generating configuration schema, sanity check, flush, refresh, etc."
 repository = "https://github.com/openvdi-stack/ov-config"
+homepage = "https://github.com/openvdi-stack/ov-config"
+readme = "README.md"
 keywords = ["ini", "configuration", "cfg", "conf", "openvdi"]
 license = "Apache-2.0"
-
-# See more keys and their definitions at 
 
 [dependencies]
 failure = "0.1.5"
