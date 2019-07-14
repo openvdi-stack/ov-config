@@ -1,3 +1,82 @@
+//! ov-config is a configuration parsing library that provide macros and convenience functions for generating configuration schema, sanity check, flush, refresh, etc. Design for `.toml` and `.ini`.
+//!
+//! # Usage
+//! - Create Configuration Schema
+//! ```
+//! extern crate ov_config;
+//!
+//! use ov_config::*;
+//!
+//! make_config!(
+//!     TestConfig,
+//!     SECTION1 {
+//!         //key: Type: Default Value => Verification closure
+//!         a_string: String: "key1".into() => |x: &String| x.len() > 0,
+//!         a_vector: Vec<i32>: vec![1, 2, 3] => |x: &Vec<i32>| x.len() < 4
+//!     };
+//!     // Support for multi section per config
+//!     SECTION2 {
+//!         a_i32: i32: 15 => |x: &i32| *x < 20,
+//!         a_bool: bool: true => |_| true
+//!     }
+//! );
+//!
+//! fn main() {
+//!     let config = TestConfig{..Default::default()};
+//!     assert_eq!(config.SECTION1.a_string, "key1");
+//!     assert_eq!(config.SECTION1.a_vector, vec![1, 2, 3]);
+//!     assert_eq!(config.SECTION2.a_i32, 15);
+//!     assert_eq!(config.SECTION2.a_bool, true);
+//! }
+//! ```
+//!
+//! - Get config from file -- will automatcially do sanity check on each value.
+//! ```
+//! extern crate ov_config;
+//! use ov_config::*;
+//! use std::fs::File;
+//! use std::io::prelude::*;
+//!
+//! make_config!(
+//!     TestConfig,
+//!     SECTION1 {
+//!         //key: Type: Default Value => Verification closure
+//!         a_string: String: "key1".into() => |x: &String| x.len() > 0,
+//!         a_vector: Vec<i32>: vec![1, 2, 3] => |x: &Vec<i32>| x.len() < 4
+//!     };
+//!     // Support for multi section per config
+//!     SECTION2 {
+//!         a_i32: i32: 15 => |x: &i32| *x < 20,
+//!         a_bool: bool: true => |_| true
+//!     }
+//! );
+//!
+//! fn main() {
+//!     let config = r#"
+//!         [SECTION1]
+//!         a_string: i_am_a_string
+//!         a_vector: [1, 2, 3]
+//!         [SECTION2]
+//!         a_i32: 12
+//!         a_bool: true
+//!     "#;
+//!
+//!     let mut file = File::create("PATH_TO_CONFIG.ini").unwrap();
+//!     file.write_all(config.as_bytes()).unwrap();
+//!     file.sync_all().unwrap();
+//!
+//!     let config = TestConfig::get_config("PATH_TO_CONFIG.ini").unwrap();
+//!
+//!     assert_eq!(config.SECTION1.a_string, "i_am_a_string");
+//!     assert_eq!(config.SECTION1.a_vector, [1, 2, 3]);
+//!     assert_eq!(config.SECTION2.a_i32, 12);
+//!     assert_eq!(config.SECTION2.a_bool, true);
+//!     std::fs::remove_file("PATH_TO_CONFIG.ini").unwrap();
+//! }
+//! ```
+//! # Generated function [doc](../ov_config/struct.ExampleConfig.html).
+//! See the [example config](../ov_config/struct.ExampleConfig.html) for generated function docs.
+
 extern crate failure;
 extern crate ini;
 extern crate serde_json;
@@ -7,6 +86,12 @@ mod error;
 pub use error::OVConfigError;
 pub use ini::Ini;
 
+/// The macro used to generate the configuration schema structure.
+///
+/// See the [crate level docs](../ov_config/index.html) for examples.
+///
+/// See the [example config](../ov_config/struct.ExampleConfig.html) for generated function docs.
+///
 #[macro_export]
 macro_rules! make_config {
     (
@@ -27,6 +112,7 @@ macro_rules! make_config {
                 }
 
                 impl $section {
+                    /// Verification Function
                     pub fn verify(&self) -> Result<(), OVConfigError> {
                         $(
                             if !$closure(&self.$key) {
@@ -70,12 +156,19 @@ macro_rules! make_config {
         #[allow(non_camel_case_types)]
         #[allow(non_snake_case)]
         #[derive(Debug, Default, PartialEq)]
+        /// Configuration schema struct.
+        ///
+        /// Basically is a struct of all sections. User will need to use `Config.Section.Key` to access value.
         pub struct $name {
             pub c_p_a_t_h: String,
             $(pub $section: ovconfig::$section,)*
         }
 
         impl $name {
+            /// Sanity check convenience function
+            ///
+            /// This function will exec the closure on each field with the input of the field's value.
+            /// Change `c_p_a_t_h` will change the path that cached inthe configuration object.
             pub fn verify(&self) -> Result<(), OVConfigError> {
                 $(self.$section.verify()?;)*
                 Ok(())
@@ -88,10 +181,28 @@ macro_rules! make_config {
                 })
             }
 
+            /// Get configuration without auto verification.
+            ///
+            /// Will use default value if specific field is not found in the configuration file.
+            ///
+            /// # Argument:
+            /// - path: Path to the configuration. This path will be cached in the object for refresh and flush.
+            ///
+            /// # Return:
+            /// Will return configuration object on success.
             pub fn get_config_no_verify<T:AsRef<str> + ?Sized>(path: &T) -> Result<Self, OVConfigError> {
                 Self::get_config_impl(path)
             }
 
+            /// Get configuration with auto verification.
+            ///
+            /// Will use default value if specific field is not found in the configuration file.
+            ///
+            /// # Argument:
+            /// - path: Path to the configuration. This path will be cached in the object for refresh and flush.
+            ///
+            /// # Return:
+            /// Will return configuration object on success.
             pub fn get_config<T:AsRef<str> + ?Sized>(path: &T) -> Result<Self, OVConfigError> {
                 let res = Self::get_config_impl(path)?;
                 res.verify()?;
@@ -103,12 +214,18 @@ macro_rules! make_config {
                 Ok(())
             }
 
+            /// Read the configuration file and update current object.
+            ///
+            /// This function will automatically do sanity check on the value.
             pub fn refresh(&mut self) -> Result<(), OVConfigError>{
                 self.refresh_impl()?;
                 self.verify()?;
                 Ok(())
             }
 
+            /// Read the configuration file and update current object.
+            ///
+            /// This function will NOT automatically do sanity check on the value.
             pub fn refresh_no_verify(&mut self) -> Result<(), OVConfigError>{
                 self.refresh_impl()?;
                 Ok(())
@@ -125,17 +242,27 @@ macro_rules! make_config {
                 Ok(())
             }
 
+            /// Flush whatever in configuration object to file.
+            ///
+            /// This function will automatically do sanity check on the value.
             pub fn flush(&self) -> Result<(), OVConfigError> {
                 self.verify()?;
                 self.flush_impl()
             }
 
+            /// Flush whatever in configuration object to file.
+            ///
+            /// This function will automatically do sanity check on the value.
             pub fn flush_no_verify(&self) -> Result<(), OVConfigError> {
                 self.flush_impl()
             }
         }
     }
 }
+
+make_config!(ExampleConfig, Section {
+    example:String:"example".into()=>|x: &String| x.len() > 0
+});
 
 #[cfg(test)]
 mod tests {
